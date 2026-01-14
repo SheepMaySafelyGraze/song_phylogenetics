@@ -20,7 +20,7 @@ geiger::name.check(tree, data.names=trait_data$species)
 
 
 # read results from threshML run
-threshml_covmatrix <- read.csv('threshml_fit_2_covariance_matrix_125var_150000.csv', header = FALSE,
+threshml_covmatrix <- read.csv('threshml_fit_2_covariance_matrix.csv', header = FALSE,
                                sep= ',')
 threshml_covmatrix <- matrix(apply(threshml_covmatrix,1, as.numeric),byrow=TRUE,
                              8,8)
