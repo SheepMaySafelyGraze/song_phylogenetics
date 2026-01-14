@@ -45,7 +45,9 @@ motif_data <- data.frame(lapply(motif_data, as.integer))
 rownames(motif_data) <- species
 
 
-# VERY LONG RUNTIME
+
+# BEWARE: VERY LONG RUNTIME, LOWER ngen AND n_chains FOR TESTING
+
 # fitting MCMC model over multiple runs
 # ancestral distributions are averaged, while liabilities and parameters are appended
 
