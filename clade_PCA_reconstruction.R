@@ -8,8 +8,8 @@ library(stringr)
 library(mvMORPH)
 library(umap)
 
-trait_data <- read.csv('phylogenetic_analysis/namefix_trait_data_100_1912.csv')
-tree <- read.tree(file='phylogenetic_analysis/namefix_tree_100_1912.tre')
+trait_data <- read.csv('data/namefix_trait_data_100_1912.csv')
+tree <- read.tree(file='data/namefix_tree_100_1912.tre')
 
 species <- tree$tip.label
 

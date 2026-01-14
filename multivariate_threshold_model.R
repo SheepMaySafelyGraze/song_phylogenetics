@@ -11,8 +11,8 @@ library(stringr)
 library(corrplot)
 
 
-trait_data <- read.csv('phylogenetic_analysis/namefix_trait_data_100_1912.csv')
-tree <- read.tree(file='phylogenetic_analysis/namefix_tree_100_1912.tre')
+trait_data <- read.csv('data/namefix_trait_data_100_1912.csv')
+tree <- read.tree(file='data/namefix_tree_100_1912.tre')
 
 # names have been matched
 geiger::name.check(tree, data.names=trait_data$species)
