@@ -1,0 +1,8 @@
+model_ = model(phylogeny)
+file = save_loc + "/ppos/model.out"
+pow_p = powerPosterior(model_, moves, monitors, file, cats=50)
+pow_p.burnin(generations=burnin_generations, tuningInterval=tuning_interval)
+pow_p.run(generations=n_generations/50)
+ss = steppingStoneSampler(file=file, powerColumnName="power", likelihoodColumnName="likelihood")
+ml := ss.marginal()
+write(ml, filename= save_loc + "/ml_res.file")

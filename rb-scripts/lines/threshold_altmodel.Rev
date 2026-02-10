@@ -1,0 +1,53 @@
+# read data
+
+motifs <- readDiscreteCharacterData("data/motif_data_tmp.nex")
+phylogeny <- readTrees("data/tree_tmp.tree")[1]
+M := phylogeny.taxa().size()
+moves = VectorMoves()
+monitors = VectorMonitors()
+
+### setup threshold model
+
+threshold ~ dnNormal(mean=0.0, sd=SD_PRIOR)
+moves.append(mvSlide(threshold, weight=15.0))
+
+liability[2*M - 1] := 0
+
+# liabilities for interior nodes and tips
+for (i in (2*M - 2):1) {
+    branch[i] := phylogeny.branchLength(i)
+    liability[i] ~ dnNormal(mean = liability[phylogeny.parent(i)], sd = sqrt(branch[i]))
+}
+
+for (i in 1:(2*M-2)) {
+    moves.append(mvSlide(liability[i]))
+}
+
+
+
+### initialising tip liabilities in a valid region
+eps = 0.1   # small increment either side of threshold
+for (i in 1:M) {
+	
+	initial[i] <- threshold + ifelse(1.0 * motifs[M - i + 1][1] == 1,
+					eps, -eps)
+
+	liability[i].setValue(initial[i])
+}
+
+
+# bernoulli variables for above/below threshold at tips
+for (i in 1:M) {
+    P[i] := 0.0
+    motif_present[i] ~ dnBernoulli(Probability(P[i]))
+    P[i] := ifelse(liability[i] > threshold, 1.0, 0.0)
+    motif_present[i].clamp(motifs[M-i + 1][1])
+}
+
+
+### monitors
+
+monitors.append(mnScreen(threshold, printgen=n_generations-1))
+monitors.append(mnFile(threshold, filename= save_loc + "/threshold.log", printgen=printgen))
+monitors.append(mnFile(liability, filename= save_loc + "/interior_liabilities.log", printgen=printgen))
+monitors.append(mnModel(filename = save_loc + "/thresh.log", printgen=printgen))
