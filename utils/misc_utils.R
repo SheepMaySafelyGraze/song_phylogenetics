@@ -275,33 +275,44 @@ read_cor_matrix <- function(filters, runs_df, burnin=0.2, join=TRUE,
 
   n_motifs <- sqrt(2*n_entries + 1/4) + 1/2  # number of motifs
   
-  out <- vector('list', length=length(folders))
+  # if significance and join, compute empirical p-value on all sample
+  signif_all <- matrix(nrow=n_motifs, ncol=n_motifs)
+  diag(signif_all) <- 0
   
-  if (significance & join) {
-    signif_list <- vector('list', length=1)
-  } else {
-    signif_list <- vector('list', length=length(folders))
-  }
+  # else, return a list of matrices indicating signficiance for each set of samples
+  signif_list <- vector('list', length=length(folders))
 
   
-  for (i in 1:length(folders)){
-    mat_i <- matrix(0, ncol=n_motifs, nrow=n_motifs)
-    signif_mat_i <- mat_i
-    diag(mat_i) <- rep(1, n_motifs)
-    
-    
-    for (j in 1:(n_motifs-1)){
-      for (k in (j+1):n_motifs){
+  out <- vector('list', length=length(folders))
+  for(i in 1:length(folders)) {
+    out[[i]] <- matrix(nrow=n_motifs, ncol=n_motifs)
+    signif_list[[i]] <- matrix(nrow=n_motifs, ncol=n_motifs)
+  }
+  
+
+  for (j in 1:(n_motifs-1)){
+    for (k in (j+1):n_motifs){
+      
+      all_samps <- numeric(0)
+      
+      for (i in 1:length(folders)){
+        mat_i <- out[[i]]
+        signif_mat_i <- signif_list[[i]]
+        diag(mat_i) <- rep(1, n_motifs)
+
         rho_jk_log <- read.csv(paste(folders[i], '/rho',j,k,'.log', sep=''), sep='\t')
+        
         m <- nrow(rho_jk_log)
         
+        all_samps <- c(all_samps, rho_jk_log[floor(burnin*m):m,5])
+          
         rho_jk <- colMeans(rho_jk_log[floor(burnin*m):m,])[5]
-        
+          
         mat_i[j,k] <- rho_jk
         mat_i[k,j] <- rho_jk
-        
+          
         prop_pos <- mean(rho_jk_log[seq(floor(burnin*m), m, 25),5] > 0)
-        
+          
         if (rho_jk > 0){
           signif_mat_i[j,k] <- as.integer((1-prop_pos) < 0.05)
           signif_mat_i[k,j] <- as.integer((1-prop_pos) < 0.05)
@@ -309,18 +320,34 @@ read_cor_matrix <- function(filters, runs_df, burnin=0.2, join=TRUE,
           signif_mat_i[j,k] <- -as.integer(prop_pos < 0.05)
           signif_mat_i[k,j] <- -as.integer(prop_pos < 0.05)
         }
+          
+        out[[i]] <- mat_i
+        signif_list[[i]] <- signif_mat_i
+      }
+      
+      rho_jk_all <- mean(all_samps)
+      prop_pos_all <- mean(all_samps > 0)
+      if (rho_jk_all > 0){
+        signif_all[j,k] <- as.integer((1-prop_pos_all) < 0.05)
+        signif_all[k,j] <- as.integer((1-prop_pos_all) < 0.05)
+      } else {
+        signif_all[j,k] <- -as.integer(prop_pos_all < 0.05)
+        signif_all[k,j] <- -as.integer(prop_pos_all < 0.05)
       }
     }
-    out[[i]] <- mat_i
-    signif_list[[i]] <- signif_mat_i
   }
 
+  if (join & significance){
+    return(list(cov=Reduce('+', out)/length(folders),
+           signif=signif_all))
+  }
   
   if (join){
     return(Reduce('+', out)/length(folders))
   } else {
     if (significance) {
-      return(c(out, signif_list))
+      return(list(cov=out,
+                  signif=signif_list))
     } else {
     return(out)
     }
