@@ -1,0 +1,12 @@
+# returns list of lists of descendants, indexed by interior node indexing of RevBayes
+# used to align RevBayes node labelling with that used in ape
+# assumes binary tree
+
+phy <- readTrees("data/tree_tmp_desc.tree")[1]
+M := phy.taxa().size()
+
+for (i in (M+1):(2*M - 1)) {
+	descendants[i-M] = phy.getDescendantTaxa(i)
+}
+
+write(descendants, filename="output/descendants_tmp.file")

@@ -1,10 +1,11 @@
 ##########################
 #
 #
-# convert data to motif presence/absence, and return as list
+# data handling utils
 #
 #
 ##########################
+
 library(geiger)
 library(stringr)
 library(phangorn)
@@ -240,11 +241,6 @@ get_run_files <- function(filters, runs_df){
   return(out)
 }
 
-
-read_ml_res_file <- function(filters, runs_df){
-  # returns a list of all ML results identified by filters
-  warning('Not implemented')
-}
 
 
 

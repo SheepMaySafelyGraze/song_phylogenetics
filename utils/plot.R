@@ -64,7 +64,19 @@ plot_thresh_Mk <- function(df, motif_dat, tree){
 }
 
 
-
+plot_motif_at_tips <- function(tree, dat, motif_ind){
+  if (!('motif_0' %in% colnames(dat))){
+    dat <- motif_data_to_binary(tree, dat)[[2]]
+  }
+  
+  plot(tree, show.tip.label=FALSE)
+  
+  colours <- ifelse(dat[,motif_ind+1]==1, 'red', 'blue')
+  
+  tiplabels(pch=16, col=colours, cex=1.25)
+  legend('bottomleft', legend=c('present', 'absent'), pch=16, col=c('red','blue'),
+         cex=1.5)
+}
 
 
 

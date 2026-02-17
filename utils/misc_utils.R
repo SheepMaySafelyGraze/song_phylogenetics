@@ -133,7 +133,7 @@ compute_unbounded_lambda <- function(tree, x, test=TRUE, estimate=FALSE) {
 
 
 
-moran_I_permutation_test <- function(tree, X, n_samps=2500) {
+moran_I_permutation_test <- function(tree, X, n_samps=2500, replace=TRUE) {
   # performs a one-sided randomisation test for signifcance of Moran I
   # on phylogenetic data X assumed binary
   
@@ -145,7 +145,7 @@ moran_I_permutation_test <- function(tree, X, n_samps=2500) {
   null_samps <- numeric(n_samps)
   
   for (n in 1:n_samps){
-    X_n <- sample(X, length(X), replace=TRUE)
+    X_n <- sample(X, length(X), replace=replace)
 
     if (var(X_n) > 0){
       null_samps[n] <- Moran.I(X_n, w)$observed
@@ -253,6 +253,148 @@ read_mv_ancestral_values <- function(tree, df, motif_inds, raw=FALSE, burnin=0.2
   }
   return(out)
 }
+
+
+read_cor_matrix <- function(filters, runs_df, burnin=0.2, join=TRUE,
+                            significance=FALSE){
+  # if singifiance==TRUE, returns a matrix of 1/0/-1 for whether the distribution
+  # of samples is significantly (0.05) positive (1) negative (-1) or neither (0)
+  
+  
+  keep_inds <- rep(TRUE, nrow(runs_df))
+  
+  for (col in names(filters)){
+    keep_inds <- keep_inds & runs_df[[col]] == filters[[col]]
+  }
+  
+  folders <- (runs_df$save_loc)[keep_inds]
+  print(paste('found results at:', folders))
+  folders <- sapply(folders, \(x) paste(x, '/rho_entries', sep=''))
+
+  n_entries <- length(list.files(folders[1]))
+
+  n_motifs <- sqrt(2*n_entries + 1/4) + 1/2  # number of motifs
+  
+  out <- vector('list', length=length(folders))
+  
+  if (significance & join) {
+    signif_list <- vector('list', length=1)
+  } else {
+    signif_list <- vector('list', length=length(folders))
+  }
+
+  
+  for (i in 1:length(folders)){
+    mat_i <- matrix(0, ncol=n_motifs, nrow=n_motifs)
+    signif_mat_i <- mat_i
+    diag(mat_i) <- rep(1, n_motifs)
+    
+    
+    for (j in 1:(n_motifs-1)){
+      for (k in (j+1):n_motifs){
+        rho_jk_log <- read.csv(paste(folders[i], '/rho',j,k,'.log', sep=''), sep='\t')
+        m <- nrow(rho_jk_log)
+        
+        rho_jk <- colMeans(rho_jk_log[floor(burnin*m):m,])[5]
+        
+        mat_i[j,k] <- rho_jk
+        mat_i[k,j] <- rho_jk
+        
+        prop_pos <- mean(rho_jk_log[seq(floor(burnin*m), m, 25),5] > 0)
+        
+        if (rho_jk > 0){
+          signif_mat_i[j,k] <- as.integer((1-prop_pos) < 0.05)
+          signif_mat_i[k,j] <- as.integer((1-prop_pos) < 0.05)
+        } else {
+          signif_mat_i[j,k] <- -as.integer(prop_pos < 0.05)
+          signif_mat_i[k,j] <- -as.integer(prop_pos < 0.05)
+        }
+      }
+    }
+    out[[i]] <- mat_i
+    signif_list[[i]] <- signif_mat_i
+  }
+
+  
+  if (join){
+    return(Reduce('+', out)/length(folders))
+  } else {
+    if (significance) {
+      return(c(out, signif_list))
+    } else {
+    return(out)
+    }
+  }
+}
+
+
+get_correlation_from_Mk_model <- function(tree, dat, motif_inds, stationary=TRUE){
+  # fits Mk model, and computes correlation implied by stationary distribution
+  
+  if (!(length(motif_inds) == 2)) {
+    warning('Provide 2 motif indeces')
+    return(NULL)
+  }
+  
+  if (!('motif_0' %in% colnames(dat))){
+    dat <- motif_data_to_binary(tree, dat)[[2]]
+  }
+  
+  if (!stationary){
+    table <- table(dat[, motif_inds+1])
+    test <- chisq.test(table)
+    return(list(cor=sqrt(test$statistic)/nrow(dat),
+                p_val=test$p.value))
+  } else {
+    
+    # fit dependent model
+    res <- fitPagel(tree, setNames(dat[,motif_inds[1]+1], rownames(dat)),
+                    setNames(dat[,motif_inds[2]+1], rownames(dat)))
+    
+    Q_mat <- matrix(res$dependent.Q, ncol=4, byrow=FALSE)
+    
+    # estimate stationary distribution
+    dist_estimate_1 <- expm(Q_mat*1000)[1,]
+    stat_dist <- expm(Q_mat*10000)[1,]
+    
+    # check convergence
+    if (sum(abs(stat_dist - dist_estimate_1)) >1e-8){
+      warning('Convergence failure')
+      print(paste('1,000', dist_estimate_1))
+      print(paste('10,000', stat_dist))
+      return(NULL)
+    }
+    
+    stationary_dist_table <- matrix(stat_dist, nrow=2, byrow=TRUE)
+    
+    corr_exact <- compute_correlation_from_table(stationary_dist_table)
+    
+    return(list(corr=corr_exact,
+                p_val=res$P))
+  }
+}
+
+compute_correlation_from_table <- function(tab){
+  # computes exact correlation from 2x2 table
+  mu_1 <- tab[2,1] + tab[2,2]
+  mu_2 <- tab[1,2] + tab[2,2]
+  
+  var_1 <- mu_1*(1 - mu_1)
+  var_2 <- mu_2*(1 - mu_2)
+  
+  tot <- 0.0
+  for (i in 0:1) {
+    for (j in 0:1) {
+      tot <- tot + tab[i+1,j+1]*(i-mu_1)*(j-mu_2)
+    }
+  }
+  return(tot/sqrt(var_1*var_2))
+}
+
+
+
+
+
 
 
 
