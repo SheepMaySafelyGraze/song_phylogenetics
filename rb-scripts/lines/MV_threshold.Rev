@@ -1,0 +1,81 @@
+# read data
+
+motifs <- readDiscreteCharacterData("data/motif_data_tmp.nex")
+phylogeny <- readTrees("data/tree_tmp.tree")[1]
+M = phylogeny.taxa().size()
+n = motifs.nchar()
+moves = VectorMoves()
+monitors = VectorMonitors()
+
+### setup threshold model
+
+### prior and moves on correlation matrix
+rho ~ dnLKJ(1.0, n)
+
+moves.append(mvCorrelationMatrixRandomWalk(rho, weight=2.0))
+moves.append(mvCorrelationMatrixSingleElementBeta(rho, weight=4.0))
+
+# thresholds drawn from i.i.d. normals
+threshold ~ dnMultivariateNormal(mean=rep(0,n), covariance=30.0 * diagonalMatrix(n))
+
+moves.append(mvVectorSingleElementSlide(threshold, weight=15.0))
+
+
+liability[2*M - 1] := rep(0, n)
+
+# and on variance, assumed equal across all motifs
+#sigma2 ~ dnLoguniform(1e-3, 3)
+#moves.append(mvScale(sigma2, weight=1.0))
+# TODO: implement different rates for each trait
+
+
+# liabilities for interior nodes and tips
+for (i in (2*M - 2):1) {
+    branch[i] := phylogeny.branchLength(i)
+    liability[i] ~ dnMultivariateNormal(mean = liability[phylogeny.parent(i)], covariance = sqrt(branch[i])*rho)
+    moves.append(mvVectorSingleElementSlide(liability[i]))
+}
+
+
+### initialising liabilities in a valid region
+eps <- 0.1   # small increment either side of threshold
+for (i in 1:M) {
+
+	for (j in 1:n) {
+		initial[i][j] <- threshold[j] + ifelse(1.0 * motifs[M - i + 1][j] == 1, eps, -eps)
+	}
+
+	liability[i].setValue(initial[i])
+}
+
+
+# defining motif presence as degenerate Bernoulli variables
+
+for (i in 1:M) {
+	for (j in 1:n) {
+	P[i][j] := 0.0
+	motif_present[i][j] ~ dnBernoulli(P[i][j])
+	P[i][j] := ifelse(liability[i][j] > threshold[j], 1.0, 0.0)
+	motif_present[i][j].clamp(motifs[M - i + 1][j])
+	}
+}
+
+
+### monitors
+
+# for entries of correlation matrix
+if (n>1) {
+for (i in 1:(n-1)) {
+    for (j in (i+1):n) {
+        monitors.append(mnFile(rho[i][j], filename = save_loc + "/rho_entries/rho" + i + j + ".log", printgen=printgen))
+    }
+}
+} else {
+monitors.append(mnFile(rho[1][1],filename = save_loc + "/rho_entries/rho11.log", printgen=printgen))
+}
+
+monitors.append(mnScreen(threshold, printgen=n_generations-1))
+
+monitors.append(mnModel(filename= save_loc + "/MV_thresh.log", printgen=printgen))
+
+
