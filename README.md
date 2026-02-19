@@ -11,6 +11,9 @@ Resources:
 - _**namefix_tree_100_1912.tre**_: phylogenetic consensus tree.
 
 Scripts:
+- ***New*** _**suboscine_analysis.R**_: produces results and figures for Suboscine species.
+- ***New*** _**oscine_analysis.R**_: produces results and figures for Oscine species.
+
 - _**univariate_threshold_multiple_chain.R**_: script to estimate motif presence/absence for ancestral species.
 - _**plot_multichain_threshold.R**_: plotting motif presence/absence reconstructions.
 - _**clade_PCA_reconstruction.R**_: reconstructing acoustic features for motifs within chosen clades.
