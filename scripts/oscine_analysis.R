@@ -49,7 +49,8 @@ significant_motifs <- which(p_vals<0.05) - 1
 ### plotting recordings of motifs in PCA space
 
 pca_inds <- 17:(17+37)  # columns of PCA data and gmm cluster
-plot_PCA_centroids(data[,pca_inds], significant_motifs, main='Oscine Motifs')
+plot_PCA_centroids(data[,pca_inds], significant_motifs, main='Oscine Motifs',
+                   cols=c(rainbow(4)[c(1,2)], 'grey50', rainbow(4)[3]))
 
 
 ### plotting correlation estimates and PCA distance matrices

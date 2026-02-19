@@ -24,10 +24,14 @@ get_PCA_distance_matrix <- function(PCA_df, motif_inds){
 
 
 plot_PCA_centroids <- function(PCA_df, motif_inds,
-                               main='Distribution of Motifs'){
+                               main='Distribution of Motifs', cols=NULL,
+                               alpha=0.05){
   
   kdes = list()
-  cols = rainbow(length(motif_inds))
+  
+  if (is.null(cols)){
+    cols <- rainbow(length(motif_inds))
+  }
   
   PCA_means <- PCA_df[,c(1:(ncol(PCA_df)))] %>%
     group_by(gmm_cluster) %>%
@@ -51,17 +55,18 @@ plot_PCA_centroids <- function(PCA_df, motif_inds,
           xlim = xlim, ylim = ylim, cex.axis=1.3, cex.lab = 1.3,
           xlab='PC1', ylab='PC2')
   PCA_ind <- PCA_df[PCA_df$gmm_cluster == motif_inds[1], ]
-  points(PCA_ind$PC1, PCA_ind$PC2,bg=alpha(cols[[1]], 0.35), col=alpha(cols[[1]], 0.35), pch=21)
+  points(PCA_ind$PC1, PCA_ind$PC2,bg=alpha(cols[[1]], alpha), col=alpha(cols[[1]], alpha), pch=21)
   
   for (i in 2:length(kdes)){
     
     contour(kdes[[i]]$x, kdes[[i]]$y, kdes[[i]]$z, col=cols[i],
             xlim = xlim, ylim = ylim, add=TRUE)
     
-    PCA_ind <- PCA_df[PCA_df$gmm_clusEter == motif_inds[i], ]
-    points(PCA_ind$PC1, PCA_ind$PC2,bg=alpha(cols[[i]], 0.35), pch=21, col=alpha(cols[[i]], 0.35))
+    PCA_ind <- PCA_df[PCA_df$gmm_cluster == motif_inds[i], ]
+    points(PCA_ind$PC1, PCA_ind$PC2,bg=alpha(cols[[i]], alpha), pch=21, col=alpha(cols[[i]], alpha))
     
   }
+  
   
   # add centroids
   for (i in 1:length(kdes)) {
