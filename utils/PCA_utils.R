@@ -8,7 +8,8 @@
 
 
 get_PCA_distance_matrix <- function(PCA_df, motif_inds){
-  # assumed PCA_df has final column for gmm_cluster, and remaining are PCA components
+  # assumed PCA_df has final column for gmm cluster, and remaining are PCA components
+  
   PCA_means <- PCA_df[,c(1:(ncol(PCA_df)))] %>%
     group_by(gmm_cluster) %>%
     summarise_all(mean)

@@ -16,33 +16,6 @@ library(expm)
 
 source('utils/plot.R')
 
-get_weighted_hamming <- function(tree, X, average=TRUE){
-  # for a single binary trait, computed weighted hamming distance
-  # this is simply the average (or total) distance 
-  # between points with differing trait values
-  
-  tot <- 0
-  n <- length(tree$tip.label)
-  D <- cophenetic.phylo(tree)
-  
-  # all unique pairs of elements
-  pairs <- RcppAlgos::comboGeneral(1:n, m=2, repetition=FALSE)
-  
-  for (i in 1:nrow(pairs)){
-    
-    j = pairs[i, 1]
-    k = pairs[i, 2]
-
-    if (X[j] != X[k]) {
-      tot = tot + D[j,k]
-    }
-    
-  }
-  
-  tot / ifelse(average, n*(n-1), 1)
-}
-
-
 simulate_threshold_model <- function(tree, thresholds, lambdas=NULL) {
   # simulates from (uncorrelated) threshold model with number of dimensions
   # specified by number of thresholds provided
@@ -130,7 +103,6 @@ compute_unbounded_lambda <- function(tree, x, test=TRUE, estimate=FALSE) {
   return(list(lambda=lam_ml,
               logLik=res$objective))
 }
-
 
 
 moran_I_permutation_test <- function(tree, X, n_samps=2500, replace=TRUE) {

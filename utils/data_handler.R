@@ -14,7 +14,9 @@ library(dplyr)
 
 motif_data_to_binary <- function(tree, data){
   # data assumed to have 'species' and 'gmm_cluster' columns
-  # returns tree, and binary data for each motif  as data frame
+  # returns a list containing:
+  # - tree
+  # - binary data for each motif as data frame, with rows ordered like tree$tip.label
   
   if (!(name.check(tree, data.names = data$species) == 'OK')){
     warning('Name mismatch in data and tree')
@@ -40,6 +42,7 @@ motif_data_to_binary <- function(tree, data){
   
   # sort motif_data so that entries are in the same order as tree labels
   motif_data <- data.frame(motif_data)
+  
   species <- tree$tip.label
   
   perm <- match(species, motif_data$species)
@@ -47,8 +50,9 @@ motif_data_to_binary <- function(tree, data){
   motif_data <- motif_data[perm,]
   motif_data <- motif_data[,2:9, drop=TRUE]
   
-  # convert to 1/0
+  # convert to 1/0 and set rownames
   motif_data <- data.frame(lapply(motif_data, as.integer))
+  
   rownames(motif_data) <- species
   
   return(c(tree, motif_data, recursive=FALSE))
@@ -57,9 +61,14 @@ motif_data_to_binary <- function(tree, data){
 
 write_to_nexus <- function(motif_data, motif_ind,
                           filename='data/motif_data_tmp.nex'){
-  # expects motif data to have a species column, and then binary columns
+  # expects motif data to have species as rownames, followed by binary columns
   # for each of 8 motifs in order
-  # saves binary motif data for motif ind as a nexus file
+  # saves binary motif data for specified motif index as a nexus file
+  
+  if (length(motif_ind) > 1){
+    warning('Use write_mv_data_to_nexus for multiple motifs')
+    return(NULL)
+  }
   
   write.nexus.data(setNames(motif_data[,motif_ind+1], rownames(motif_data)),
                    file=filename, format='standard')
@@ -71,6 +80,7 @@ write_to_nexus <- function(motif_data, motif_ind,
 }
 
 write_mv_data_to_nexus <- function(motif_data, filename='data/motif_data_tmp.nex'){
+  # write a data frame with binary columns to nexus file
   
   write.nexus.data(as.matrix(motif_data),
                    file=filename, format='standard')
@@ -125,12 +135,37 @@ match_ape_rb_nodes <- function(tree){
   return(match(desc_ape_vec, desc_vec))
 }
 
-
+thresh_ace_to_binary <- function(liab_df, thresh_df){
+  # converts threshold model liabilities to binary traits
+  # expects inputs to be liability and threshold log from a run of RevBayes
+  
+  out_df <- liab_df
+  
+  if (nrow(out_df) != nrow(thresh_df)){
+    warning('differing number of samples of liabilities and thresholds')
+    return(NULL)
+  }
+  
+  for (i in 1:nrow(out_df)){
+    th_i <- (thresh_df$threshold)[i]
+    out_df[i, 4:ncol(out_df)] <- ifelse(out_df[i, 4:ncol(out_df)] > th_i, 1, 0)
+  }
+  
+  # drop metadata columns
+  out_df <- out_df[, c(5:ncol(out_df)), drop=TRUE]
+  
+  return(out_df)
+}
 
 ### functions to location and load run results from runs.csv
 
 read_run_files <- function(filters, runs_df, join=FALSE,
                            raw=FALSE, burnin=0.2){
+  # filters should be a list specifying values for the columns of runs.csv
+  # function returns run files associated with those runs
+  # if join = TRUE, attempts to join these files row-wise after discarding burnin
+  # if raw = FALSE, turns liabilites from threshold model into binary motif presence
+  
   
   # get filepaths
   keep_inds <- rep(TRUE, nrow(runs_df))
@@ -161,7 +196,6 @@ read_run_files <- function(filters, runs_df, join=FALSE,
     filepaths <- c(filepaths, paste(folder, filename, sep ='/'))
   }
   
-  #
   out = list()
   for (i in 1:length(filepaths)){
     file <- filepaths[i]
@@ -204,50 +238,4 @@ read_run_files <- function(filters, runs_df, join=FALSE,
     return(out)} 
 
 }
-
-
-
-
-get_run_files <- function(filters, runs_df){
-  # filters should be a named list of run parameters specifying analysis and model_type
-  # returns folder containing 
-  # type must be either 'ace' or 'ml', specifying 
-  
-  keep_inds <- rep(TRUE, nrow(runs_df))
-  
-  for (col in names(filters)){
-    keep_inds <- keep_inds & runs_df[[col]] == filters[[col]]
-  }
-  
-  folders <- (runs_df$save_loc)[keep_inds]
-  out <- c()
-  
-  # TODO: standardise naming so this is not necessary
-  if (filters[['analysis']] == 'MCMC'){
-    if (filters[['model_type']] == 'Mk'){
-      filename = 'states.txt'
-    }
-    if (filters[['model_type']] %in% c('threshold', 'threshold_alt')){
-      filename= 'interior_liabilities.log'
-    }
-  } else {
-    filename = 'ml_res.file'
-  }
-  
-  for (folder in folders){
-    out <- c(out, paste(folder, filename, sep ='/'))
-  }
-  
-  return(out)
-}
-
-
-
-
-
-
-
-
-
-
 
