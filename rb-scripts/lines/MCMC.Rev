@@ -1,0 +1,3 @@
+model_ = model(phylogeny)
+mcmc = mcmc(model_, monitors, moves, nruns=n_chains)
+mcmc.run(generations=n_generations)
